@@ -1,0 +1,101 @@
+/* ==========================================================
+   1. GRID DE BOTONES DE FECHAS
+   ========================================================== */
+.tc-date-grid-container {
+    display: grid;
+    /* Crea columnas responsivas automáticamente */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.tc-trigger-modal-btn {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: 1px solid #2c3e50;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.tc-trigger-modal-btn:hover {
+    background-color: #1a252f;
+    border-color: #1a252f;
+    transform: translateY(-2px); /* Pequeño efecto de elevación */
+}
+
+/* ==========================================================
+   2. ESTRUCTURA DEL MODAL (OVERLAY Y CONTENEDOR)
+   ========================================================== */
+
+/* Fondo oscuro que cubre toda la pantalla */
+#tc-checkout-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999; /* Z-index alto para sobreponerse al header/footer de WP */
+    
+    /* Transiciones suaves para apertura/cierre */
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Clase dinámica que el JS añade/quita para ocultar el modal */
+#tc-checkout-modal.tc-modal-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* La caja blanca central donde se inyecta Tickera */
+.tc-modal-content {
+    background-color: #ffffff;
+    padding: 40px 30px 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    max-height: 90vh; /* Evita que el modal sea más alto que la pantalla */
+    overflow-y: auto; /* Permite scroll interno si el componente de Tickera es muy largo */
+}
+
+/* ==========================================================
+   3. ELEMENTOS INTERNOS DEL MODAL
+   ========================================================== */
+
+/* Botón de cierre (X) */
+.tc-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #888888;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.tc-modal-close:hover {
+    color: #e74c3c; /* Cambia a rojo al hacer hover */
+}
+
+/* Contenedor donde aterriza el HTML procesado por AJAX */
+#tc-tickera-component-wrapper {
+    min-height: 100px; /* Altura mínima para evitar que el modal "salte" visualmente mientras carga */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
