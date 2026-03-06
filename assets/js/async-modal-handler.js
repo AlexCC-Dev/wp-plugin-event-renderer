@@ -6,41 +6,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buttons.forEach(button => {
         button.addEventListener('click', async function() {
-            const eventoId = this.getAttribute('data-evento-id');
+            // 1. Obtener la URL de la página del evento específico
+            const eventUrl = this.getAttribute('data-url');
             
-            // 1. Mostrar modal en estado de carga
+            // 2. Abrir el modal en estado de carga
             modal.classList.remove('tc-modal-hidden');
-            wrapper.innerHTML = '<p>Cargando tickets...</p>';
+            wrapper.innerHTML = '<p style="text-align:center;">Cargando tickets disponibles...</p>';
 
-            // 2. Preparar los datos para enviar al servidor WP
-            const formData = new URLSearchParams();
-            formData.append('action', 'load_tickera_component');
-            formData.append('evento_id', eventoId);
-            formData.append('nonce', tcEdrConfig.nonce);
-
-            // 3. Ejecutar la petición asíncrona
             try {
-                const response = await fetch(tcEdrConfig.ajaxUrl, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
+                // 3. Descargar el HTML de la página en segundo plano
+                const response = await fetch(eventUrl);
+                const htmlString = await response.text();
+                
+                // 4. Convertir el texto HTML en un objeto DOM navegable
+                const parser = new DOMParser();
+                const virtualDOM = parser.parseFromString(htmlString, 'text/html');
+                
+                // 5. Buscar el componente exacto dentro de ese DOM virtual
+                const tickeraComponent = virtualDOM.querySelector('.tickera');
 
-                if (data.success) {
-                    // 4. Inyectar el componente de Tickera devuelto por el servidor
-                    wrapper.innerHTML = data.data;
+                // 6. Inyectarlo en nuestro modal
+                if (tickeraComponent) {
+                    wrapper.innerHTML = ''; // Limpiamos el texto de carga
+                    wrapper.appendChild(tickeraComponent);
                 } else {
-                    wrapper.innerHTML = '<p>Error al cargar el evento.</p>';
+                    wrapper.innerHTML = '<p>Lo sentimos, no se encontraron opciones de ticket para esta fecha.</p>';
                 }
+
             } catch (error) {
-                wrapper.innerHTML = '<p>Error de conexión.</p>';
+                console.error("Error fetching event fragment:", error);
+                wrapper.innerHTML = '<p>Error de red al cargar el evento.</p>';
             }
         });
     });
 
-    // Cerrar el modal
+    // Cerrar el modal y limpiar el DOM inyectado
     closeModal.addEventListener('click', () => {
         modal.classList.add('tc-modal-hidden');
-        wrapper.innerHTML = ''; // Limpiar el DOM al cerrar
+        wrapper.innerHTML = ''; 
     });
 });

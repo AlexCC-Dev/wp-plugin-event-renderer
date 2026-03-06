@@ -15,7 +15,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/class-modal-ui-builder.php'
 add_action( 'wp_enqueue_scripts', 'tc_edr_enqueue_assets' );
 function tc_edr_enqueue_assets() {
     wp_enqueue_style( 'tc-edr-modal-css', plugin_dir_url( __FILE__ ) . 'assets/css/modal-layout.css' );
-    wp_enqueue_script( 'tc-edr-modal-js', plugin_dir_url( __FILE__ ) . 'assets/js/async-modal-handler.js', array(), '1.0.0', true );
+    wp_enqueue_script( 'tc-edr-modal-js', plugin_dir_url( __FILE__ ) . 'assets/js/async-modal-handler.js', array(), time(), true );
     
     // Pasar la URL de AJAX al frontend
     wp_localize_script( 'tc-edr-modal-js', 'tcEdrConfig', array(

@@ -3,26 +3,29 @@ class TC_Modal_UI_Builder {
 
     // Renderiza la vista inicial (solo fechas)
     public static function render_date_grid( $atts ) {
-        // Si no se le pasa un ID en el shortcode, toma el ID del evento actual automáticamente
         $atts = shortcode_atts( array(
             'id' => get_the_ID(), 
         ), $atts, 'tc_date_selector' );
 
         $evento_id = intval( $atts['id'] );
-
-        // Pasamos el ID capturado a nuestro manejador de base de datos
         $fechas_eventos = TC_Date_Query_Handler::get_tickera_dates( $evento_id );
         
         ob_start();
-
-        // ... El resto del código HTML se mantiene exactamente igual ...
         ?>
         <div class="tc-date-grid-container">
             <?php foreach ( $fechas_eventos as $evento ) : ?>
-                <button class="tc-trigger-modal-btn" data-evento-id="<?php echo esc_attr( $evento['id'] ); ?>">
+                <button class="tc-trigger-modal-btn" data-url="<?php echo esc_url( get_permalink( $evento['id'] ) ); ?>">
                     <?php echo esc_html( $evento['fecha_formateada'] ); ?>
                 </button>
             <?php endforeach; ?>
+        </div>
+
+        <div id="tc-checkout-modal" class="tc-modal-hidden">
+            <div class="tc-modal-content">
+                <span class="tc-modal-close">&times;</span>
+                <div id="tc-tickera-component-wrapper">
+                    </div>
+            </div>
         </div>
         <?php
         return ob_get_clean();
