@@ -24,7 +24,8 @@ class TC_Modal_UI_Builder {
             <div class="tc-modal-content">
                 <span class="tc-modal-close">&times;</span>
                 <div id="tc-tickera-component-wrapper">
-                    </div>
+                    <div class="coco-qty-wrap"></div>
+                </div>
             </div>
         </div>
         <?php

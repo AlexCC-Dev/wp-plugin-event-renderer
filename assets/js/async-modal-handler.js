@@ -6,43 +6,131 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buttons.forEach(button => {
         button.addEventListener('click', async function() {
-            // 1. Obtener la URL de la página del evento específico
             const eventUrl = this.getAttribute('data-url');
             
-            // 2. Abrir el modal en estado de carga
             modal.classList.remove('tc-modal-hidden');
             wrapper.innerHTML = '<p style="text-align:center;">Cargando tickets disponibles...</p>';
 
             try {
-                // 3. Descargar el HTML de la página en segundo plano
                 const response = await fetch(eventUrl);
                 const htmlString = await response.text();
                 
-                // 4. Convertir el texto HTML en un objeto DOM navegable
                 const parser = new DOMParser();
                 const virtualDOM = parser.parseFromString(htmlString, 'text/html');
                 
-                // 5. Buscar el componente exacto dentro de ese DOM virtual
                 const tickeraComponent = virtualDOM.querySelector('.tickera');
 
-                // 6. Inyectarlo en nuestro modal
                 if (tickeraComponent) {
-                    wrapper.innerHTML = ''; // Limpiamos el texto de carga
+                    // 1. Buscamos el botón de compra nativo de WooCommerce dentro del componente
+                    const buyBtn = tickeraComponent.querySelector('.add_to_cart_button');
+                    
+                    // 2. Si el botón existe, pero NO trae el contador, lo construimos e inyectamos
+                    if (buyBtn && !tickeraComponent.querySelector('.coco-qty-wrap')) {
+                        
+                        // Envolvemos el botón en la estructura que usa tu tema
+                        const wrapperInner = document.createElement('div');
+                        wrapperInner.className = 'coco-btn-wrapper-inner';
+                        
+                        // Construimos el HTML exacto que me compartiste
+                        const qtyHTML = `
+                            <div class="coco-qty-wrap">
+                                <button type="button" class="coco-qty-btn coco-minus">−</button>
+                                <input type="number" min="1" step="1" class="coco-qty" value="1" aria-label="Quantity">
+                                <button type="button" class="coco-qty-btn coco-plus">+</button>
+                            </div>
+                        `;
+                        
+                        // Insertamos el wrapper antes del botón de compra y metemos el botón dentro
+                        buyBtn.parentNode.insertBefore(wrapperInner, buyBtn);
+                        wrapperInner.insertAdjacentHTML('afterbegin', qtyHTML);
+                        wrapperInner.appendChild(buyBtn);
+                    }
+
+                    // 3. Imprimimos el componente en pantalla
+                    wrapper.innerHTML = ''; 
                     wrapper.appendChild(tickeraComponent);
+
+                    // 4. Reactivamos la lógica del contador ya renderizado en el modal
+                    const qtyInput = wrapper.querySelector('.coco-qty');
+                    const btnMinus = wrapper.querySelector('.coco-minus') || wrapper.querySelectorAll('.coco-qty-btn')[0];
+                    const btnPlus = wrapper.querySelector('.coco-plus') || wrapper.querySelectorAll('.coco-qty-btn')[1];
+
+                    if (buyBtn) {
+                        
+                        buyBtn.textContent = 'BUY TICKETS';
+
+                        if (qtyInput && btnMinus && btnPlus) {
+                            
+                            // Leemos el stock disponible desde la base de datos (atributo max nativo)
+                            const maxStock = qtyInput.hasAttribute('max') && qtyInput.getAttribute('max') !== '' 
+                                ? parseInt(qtyInput.getAttribute('max')) 
+                                : Infinity; // Si no hay límite, lo dejamos infinito
+
+                            const updateCartState = (newQty) => {
+                                qtyInput.value = newQty;
+                                buyBtn.setAttribute('data-quantity', newQty); 
+                            };
+
+                            btnMinus.addEventListener('click', () => {
+                                let current = parseInt(qtyInput.value) || 1;
+                                if (current > 1) {
+                                    updateCartState(current - 1);
+                                    btnPlus.style.opacity = '1'; // Restaurar aspecto visual
+                                }
+                            });
+
+                            btnPlus.addEventListener('click', () => {
+                                let current = parseInt(qtyInput.value) || 1;
+                                
+                                // Validación estricta de stock
+                                if (current < maxStock) {
+                                    updateCartState(current + 1);
+                                } else {
+                                    // Feedback visual si intentan comprar más boletos de los que existen
+                                    btnPlus.style.opacity = '0.4';
+                                    btnPlus.style.cursor = 'not-allowed';
+                                }
+                            });
+
+                            qtyInput.addEventListener('input', (e) => {
+                                let current = parseInt(e.target.value) || 1;
+                                if (current < 1) current = 1;
+                                if (current > maxStock) current = maxStock; // Bloqueo de teclado
+                                updateCartState(current);
+                            });
+                        }
+                    }
+
                 } else {
-                    wrapper.innerHTML = '<p>Lo sentimos, no se encontraron opciones de ticket para esta fecha.</p>';
+                    wrapper.innerHTML = '<p style="text-align:center;">Lo sentimos, no se encontraron opciones de ticket para esta fecha.</p>';
                 }
 
             } catch (error) {
-                console.error("Error fetching event fragment:", error);
-                wrapper.innerHTML = '<p>Error de red al cargar el evento.</p>';
+                console.error("Error al cargar el fragmento DOM:", error);
+                wrapper.innerHTML = '<p style="text-align:center;">Error de red al cargar el evento.</p>';
             }
         });
     });
 
-    // Cerrar el modal y limpiar el DOM inyectado
     closeModal.addEventListener('click', () => {
         modal.classList.add('tc-modal-hidden');
         wrapper.innerHTML = ''; 
     });
 });
+
+// Escuchador global para el evento de WooCommerce
+if (typeof jQuery !== 'undefined') {
+    // WooCommerce dispara 'added_to_cart' a través de jQuery cuando la inserción en BD es exitosa
+    jQuery(document.body).on('added_to_cart', function(event, fragments, cart_hash, $button) {
+        
+        // Verificamos si el clic provino de nuestro modal para no afectar otros botones de la web
+        if ($button && $button.closest('#tc-checkout-modal').length > 0) {
+            
+            // Cambiamos el texto del botón temporalmente para mejor UX
+            $button.text('Redirigiendo...');
+            
+            // Redirección segura al carrito
+            window.location.href = '/cart/';
+        }
+    });
+}
