@@ -7,7 +7,24 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.forEach(button => {
         button.addEventListener('click', async function() {
             const eventUrl = this.getAttribute('data-url');
+            const imgUrl = this.getAttribute('data-img'); // 1. Capturamos la imagen
+            const figureContainer = modal.querySelector('.img-product-container figure');
+            const eventTitle = this.getAttribute('data-title'); // Capturamos el título
+            const eventDate = this.getAttribute('data-date');
+            const titleContainer = modal.querySelector('.tc-modal-title');
+            const dateContainer = modal.querySelector('.tc-modal-date');
+
             
+            if (imgUrl) {
+                figureContainer.innerHTML = `<img src="${imgUrl}" alt="Event Ticket" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover;">`;
+            } else {
+                // Limpiamos o ponemos una imagen por defecto si el evento no tiene foto
+                figureContainer.innerHTML = ''; 
+            }
+            
+            titleContainer.textContent = eventTitle;
+            dateContainer.textContent = `${eventDate}`;
+
             modal.classList.remove('tc-modal-hidden');
             wrapper.innerHTML = '<p style="text-align:center;">Cargando tickets disponibles...</p>';
 
@@ -31,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const wrapperInner = document.createElement('div');
                         wrapperInner.className = 'coco-btn-wrapper-inner';
                         
-                        // Construimos el HTML exacto que me compartiste
+                        // Construimos el HTML exacto
                         const qtyHTML = `
                             <div class="coco-qty-wrap">
                                 <button type="button" class="coco-qty-btn coco-minus">−</button>

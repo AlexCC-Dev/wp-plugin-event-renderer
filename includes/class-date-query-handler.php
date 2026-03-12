@@ -55,12 +55,15 @@ class TC_Date_Query_Handler {
                 $query->the_post();
                 $post_id = get_the_ID();
                 $raw_date = get_post_meta( $post_id, 'event_date_time', true );
+                $img_url = get_the_post_thumbnail_url( $post_id, 'large' );
                 
                 if ( ! empty( $raw_date ) ) {
                     $timestamp = strtotime( $raw_date );
                     $fechas_eventos[] = array(
                         'id'               => $post_id,
-                        'fecha_formateada' => wp_date( 'F j, Y - g:i a', $timestamp )
+                        'titulo'           => get_the_title($post_id),
+                        'fecha_formateada' => wp_date( 'F j, Y - g:i a', $timestamp ),
+                        'imagen'           => $img_url ? $img_url : '' // Pasamos la URL o vacío si no tiene
                     );
                 }
             }

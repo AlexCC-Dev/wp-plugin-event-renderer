@@ -66,8 +66,7 @@
     background-color: #ffffff;
     padding: 40px 30px 30px;
     border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
+    width: 900px;
     position: relative;
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     max-height: 90vh; /* Evita que el modal sea más alto que la pantalla */
@@ -101,4 +100,60 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+}
+
+.buy-modal-container {
+    display: flex;
+    flex-direction: row;
+    width: 700px;
+    gap: 30px;
+    margin-top: 10px;
+    min-height: 100px;
+}
+
+.buy-modal-container .img-product-container, #tc-tickera-component-wrapper {
+    width:45%;
+    height: auto;
+}
+
+.tc-modal-left-column {
+    flex: 1; /* Toma el 50% del espacio */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 40%;
+}
+
+.tc-modal-right-column {
+    flex: 1; /* Toma el otro 50% */
+    background: #fdfdfd;
+    padding: 20px;
+    border-radius: 8px;
+    /* Neutralizamos sombras externas exageradas del tema para evitar dobles cuadros */
+    box-shadow: 0 2px 15px rgba(0,0,0,0.06); 
+    border: 1px solid #eaeaea;
+    position: relative; /* Fuerza al componente de Tickera a no flotar fuera de la caja */
+}
+
+/* Forzar reset a la tabla de Tickera para que no rompa la columna derecha */
+.tc-modal-right-column table.event_tickets {
+    margin: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Adaptabilidad para móviles */
+@media (max-width: 768px) {
+    .buy-modal-container {
+        flex-direction: column;
+    }
+    .tc-modal-left-column,
+    .tc-modal-right-column {
+        width: 100%;
+    }
+    /* En móvil, la imagen y texto van arriba, el cobro abajo */
+    .tc-modal-content {
+        padding: 30px 20px 20px;
+    }
 }
