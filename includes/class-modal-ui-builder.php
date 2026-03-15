@@ -17,8 +17,8 @@ class TC_Modal_UI_Builder {
                         data-url="<?php echo esc_url( get_permalink( $evento['id'] ) ); ?>"
                         data-img="<?php echo esc_url( $evento['imagen'] ); ?>"
                         data-title="<?php echo esc_attr( $evento['titulo'] ); ?>"
-                        data-date="<?php echo esc_attr( $evento['fecha_formateada'] ); ?>">
-                    <?php echo esc_html( $evento['fecha_formateada'] ); ?>
+                        data-date="<?php echo esc_attr( $evento['fecha_formateada'] ); ?>"
+                        data-stock="<?php echo esc_attr( $evento['stock'] ); ?>"> <?php echo esc_html( $evento['fecha_formateada'] ); ?>
                 </button>
             <?php endforeach; ?>
         </div>

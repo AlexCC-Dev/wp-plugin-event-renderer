@@ -6,104 +6,121 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buttons.forEach(button => {
         button.addEventListener('click', async function() {
-            const eventUrl = this.getAttribute('data-url');
-            const imgUrl = this.getAttribute('data-img'); // 1. Capturamos la imagen
+            const eventUrl = button.getAttribute('data-url');
+            const imgUrl = button.getAttribute('data-img');
+            const eventTitle = button.getAttribute('data-title');
+            const eventDate = button.getAttribute('data-date');
+            
             const figureContainer = modal.querySelector('.img-product-container figure');
-            const eventTitle = this.getAttribute('data-title'); // Capturamos el título
-            const eventDate = this.getAttribute('data-date');
             const titleContainer = modal.querySelector('.tc-modal-title');
             const dateContainer = modal.querySelector('.tc-modal-date');
 
-            
             if (imgUrl) {
-                figureContainer.innerHTML = `<img src="${imgUrl}" alt="Event Ticket" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover;">`;
+                figureContainer.innerHTML = `<img src="${imgUrl}" alt="${eventTitle}" style="width: 100%; height: auto; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">`;
             } else {
-                // Limpiamos o ponemos una imagen por defecto si el evento no tiene foto
                 figureContainer.innerHTML = ''; 
             }
-            
-            titleContainer.textContent = eventTitle;
-            dateContainer.textContent = `${eventDate}`;
 
+            titleContainer.textContent = eventTitle;
+            dateContainer.textContent = `🕒 ${eventDate}`;
+            
             modal.classList.remove('tc-modal-hidden');
             wrapper.innerHTML = '<p style="text-align:center;">Cargando tickets disponibles...</p>';
 
             try {
+                // 1. Extraemos el DOM del evento
                 const response = await fetch(eventUrl);
                 const htmlString = await response.text();
                 
                 const parser = new DOMParser();
                 const virtualDOM = parser.parseFromString(htmlString, 'text/html');
-                
                 const tickeraComponent = virtualDOM.querySelector('.tickera');
 
                 if (tickeraComponent) {
-                    // 1. Buscamos el botón de compra nativo de WooCommerce dentro del componente
-                    const buyBtn = tickeraComponent.querySelector('.add_to_cart_button');
-                    
-                    // 2. Si el botón existe, pero NO trae el contador, lo construimos e inyectamos
-                    if (buyBtn && !tickeraComponent.querySelector('.coco-qty-wrap')) {
-                        
-                        // Envolvemos el botón en la estructura que usa tu tema
-                        const wrapperInner = document.createElement('div');
-                        wrapperInner.className = 'coco-btn-wrapper-inner';
-                        
-                        // Construimos el HTML exacto
-                        const qtyHTML = `
-                            <div class="coco-qty-wrap">
-                                <button type="button" class="coco-qty-btn coco-minus">−</button>
-                                <input type="number" min="1" step="1" class="coco-qty" value="1" aria-label="Quantity">
-                                <button type="button" class="coco-qty-btn coco-plus">+</button>
-                            </div>
-                        `;
-                        
-                        // Insertamos el wrapper antes del botón de compra y metemos el botón dentro
-                        buyBtn.parentNode.insertBefore(wrapperInner, buyBtn);
-                        wrapperInner.insertAdjacentHTML('afterbegin', qtyHTML);
-                        wrapperInner.appendChild(buyBtn);
-                    }
+                    const finalBuyBtn = tickeraComponent.querySelector('.add_to_cart_button');
+                    let absoluteMaxStock = 9999; // Límite por defecto
 
-                    // 3. Imprimimos el componente en pantalla
-                    wrapper.innerHTML = ''; 
-                    wrapper.appendChild(tickeraComponent);
-
-                    // 4. Reactivamos la lógica del contador ya renderizado en el modal
-                    const qtyInput = wrapper.querySelector('.coco-qty');
-                    const btnMinus = wrapper.querySelector('.coco-minus') || wrapper.querySelectorAll('.coco-qty-btn')[0];
-                    const btnPlus = wrapper.querySelector('.coco-plus') || wrapper.querySelectorAll('.coco-qty-btn')[1];
-
-                    if (buyBtn) {
+                    // 2. LA MAGIA: Consultamos el stock del ID exacto en WooCommerce
+                    if (finalBuyBtn) {
+                        const productId = finalBuyBtn.getAttribute('data-product_id');
                         
-                        buyBtn.textContent = 'BUY TICKETS';
+                        if (productId) {
+                            const formData = new URLSearchParams();
+                            formData.append('action', 'tc_get_exact_product_stock');
+                            formData.append('product_id', productId);
+                            formData.append('nonce', tcEdrConfig.nonce);
 
-                        if (qtyInput && btnMinus && btnPlus) {
-                            
-                            // Leemos el stock disponible desde la base de datos (atributo max nativo)
-                            const maxStock = qtyInput.hasAttribute('max') && qtyInput.getAttribute('max') !== '' 
-                                ? parseInt(qtyInput.getAttribute('max')) 
-                                : Infinity; // Si no hay límite, lo dejamos infinito
+                            try {
+                                const stockRes = await fetch(tcEdrConfig.ajaxUrl, { method: 'POST', body: formData });
+                                const stockData = await stockRes.json();
+                                
+                                if (stockData.success) {
+                                    absoluteMaxStock = parseInt(stockData.data.stock);
+                                    // IMPRESIÓN EN CONSOLA SOLICITADA
+                                    console.log(`✅ [Validación de Stock] Producto ID: ${productId} | Stock Exacto en BD: ${absoluteMaxStock}`);
+                                }
+                            } catch (e) {
+                                console.error("Error al consultar inventario en tiempo real", e);
+                            }
+                        }
+
+                        // 3. Construcción de la interfaz (ahora sabiendo el límite real)
+                        if (!tickeraComponent.querySelector('.coco-qty-wrap')) {
+                            const wrapperInner = document.createElement('div');
+                            wrapperInner.className = 'coco-btn-wrapper-inner';
+                            const qtyHTML = `
+                                <div class="coco-qty-wrap">
+                                    <button type="button" class="coco-qty-btn coco-minus">−</button>
+                                    <input type="number" min="1" step="1" class="coco-qty" value="1" aria-label="Quantity">
+                                    <button type="button" class="coco-qty-btn coco-plus">+</button>
+                                </div>
+                            `;
+                            finalBuyBtn.parentNode.insertBefore(wrapperInner, finalBuyBtn);
+                            wrapperInner.insertAdjacentHTML('afterbegin', qtyHTML);
+                            wrapperInner.appendChild(finalBuyBtn);
+                        }
+
+                        wrapper.innerHTML = ''; 
+                        wrapper.appendChild(tickeraComponent);
+
+                        // 4. Clonamos para purgar eventos fantasmas del tema
+                        const qtyWrapOriginal = wrapper.querySelector('.coco-qty-wrap');
+                        if (qtyWrapOriginal) {
+                            const qtyWrapClone = qtyWrapOriginal.cloneNode(true);
+                            qtyWrapOriginal.parentNode.replaceChild(qtyWrapClone, qtyWrapOriginal);
+                        }
+
+                        // 5. Reactivamos la lógica usando `absoluteMaxStock` de la BD
+                        const qtyInput = wrapper.querySelector('.coco-qty');
+                        const btnMinus = wrapper.querySelectorAll('.coco-qty-btn')[0];
+                        const btnPlus = wrapper.querySelectorAll('.coco-qty-btn')[1];
+                        const newBuyBtn = wrapper.querySelector('.add_to_cart_button');
+
+                        if (newBuyBtn && qtyInput && btnMinus && btnPlus) {
+                            newBuyBtn.textContent = 'BUY TICKETS';
+                            qtyInput.removeAttribute('max');
 
                             const updateCartState = (newQty) => {
                                 qtyInput.value = newQty;
-                                buyBtn.setAttribute('data-quantity', newQty); 
+                                newBuyBtn.setAttribute('data-quantity', newQty); 
                             };
 
                             btnMinus.addEventListener('click', () => {
                                 let current = parseInt(qtyInput.value) || 1;
                                 if (current > 1) {
                                     updateCartState(current - 1);
-                                    btnPlus.style.opacity = '1'; // Restaurar aspecto visual
+                                    btnPlus.style.opacity = '1'; 
+                                    btnPlus.style.cursor = 'pointer';
                                 }
                             });
 
                             btnPlus.addEventListener('click', () => {
                                 let current = parseInt(qtyInput.value) || 1;
                                 
-                                // Validación estricta de stock
-                                if (current < maxStock) {
+                                // CONDICIONANTE INQUEBRANTABLE DEL STOCK
+                                if (current < absoluteMaxStock) {
                                     updateCartState(current + 1);
                                 } else {
-                                    // Feedback visual si intentan comprar más boletos de los que existen
                                     btnPlus.style.opacity = '0.4';
                                     btnPlus.style.cursor = 'not-allowed';
                                 }
@@ -112,14 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             qtyInput.addEventListener('input', (e) => {
                                 let current = parseInt(e.target.value) || 1;
                                 if (current < 1) current = 1;
-                                if (current > maxStock) current = maxStock; // Bloqueo de teclado
+                                if (current > absoluteMaxStock) current = absoluteMaxStock; 
                                 updateCartState(current);
                             });
                         }
                     }
 
                 } else {
-                    wrapper.innerHTML = '<p style="text-align:center;">Lo sentimos, no se encontraron opciones de ticket para esta fecha.</p>';
+                    wrapper.innerHTML = '<p style="text-align:center;">Lo sentimos, no se encontraron opciones de ticket.</p>';
                 }
 
             } catch (error) {
@@ -135,18 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Escuchador global para el evento de WooCommerce
 if (typeof jQuery !== 'undefined') {
-    // WooCommerce dispara 'added_to_cart' a través de jQuery cuando la inserción en BD es exitosa
     jQuery(document.body).on('added_to_cart', function(event, fragments, cart_hash, $button) {
-        
-        // Verificamos si el clic provino de nuestro modal para no afectar otros botones de la web
         if ($button && $button.closest('#tc-checkout-modal').length > 0) {
-            
-            // Cambiamos el texto del botón temporalmente para mejor UX
             $button.text('Redirigiendo...');
-            
-            // Redirección segura al carrito
             window.location.href = '/cart/';
         }
     });
