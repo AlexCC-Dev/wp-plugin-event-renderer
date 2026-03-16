@@ -1,8 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
     const buttons = document.querySelectorAll('.tc-trigger-modal-btn');
     const modal = document.getElementById('tc-checkout-modal');
-    const closeModal = document.querySelector('.tc-modal-close');
+    const closeModalBtn = document.querySelector('.tc-modal-close');
     const wrapper = document.getElementById('tc-tickera-component-wrapper');
+
+    // Función centralizada para cerrar el modal y restaurar la página
+    const closeAndCleanModal = () => {
+        modal.classList.add('tc-modal-hidden');
+        wrapper.innerHTML = ''; 
+        // Restauramos el scroll y la interacción del fondo
+        document.body.classList.remove('tc-modal-open');
+    };
 
     buttons.forEach(button => {
         button.addEventListener('click', async function() {
@@ -10,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const imgUrl = button.getAttribute('data-img');
             const eventTitle = button.getAttribute('data-title');
             const eventDate = button.getAttribute('data-date');
+            
+            const absoluteMaxStock = parseInt(button.getAttribute('data-stock')) || 9999;
             
             const figureContainer = modal.querySelector('.img-product-container figure');
             const titleContainer = modal.querySelector('.tc-modal-title');
@@ -24,11 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
             titleContainer.textContent = eventTitle;
             dateContainer.textContent = `🕒 ${eventDate}`;
             
+            // Abrimos el modal y BLOQUEAMOS el fondo
             modal.classList.remove('tc-modal-hidden');
+            document.body.classList.add('tc-modal-open');
+            
             wrapper.innerHTML = '<p style="text-align:center;">Cargando tickets disponibles...</p>';
 
             try {
-                // 1. Extraemos el DOM del evento
                 const response = await fetch(eventUrl);
                 const htmlString = await response.text();
                 
@@ -38,9 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (tickeraComponent) {
                     const finalBuyBtn = tickeraComponent.querySelector('.add_to_cart_button');
-                    let absoluteMaxStock = 9999; // Límite por defecto
 
-                    // 2. LA MAGIA: Consultamos el stock del ID exacto en WooCommerce
                     if (finalBuyBtn) {
                         const productId = finalBuyBtn.getAttribute('data-product_id');
                         
@@ -56,15 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                 
                                 if (stockData.success) {
                                     absoluteMaxStock = parseInt(stockData.data.stock);
-                                    // IMPRESIÓN EN CONSOLA SOLICITADA
-                                    console.log(`✅ [Validación de Stock] Producto ID: ${productId} | Stock Exacto en BD: ${absoluteMaxStock}`);
                                 }
                             } catch (e) {
                                 console.error("Error al consultar inventario en tiempo real", e);
                             }
                         }
 
-                        // 3. Construcción de la interfaz (ahora sabiendo el límite real)
                         if (!tickeraComponent.querySelector('.coco-qty-wrap')) {
                             const wrapperInner = document.createElement('div');
                             wrapperInner.className = 'coco-btn-wrapper-inner';
@@ -83,14 +90,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         wrapper.innerHTML = ''; 
                         wrapper.appendChild(tickeraComponent);
 
-                        // 4. Clonamos para purgar eventos fantasmas del tema
                         const qtyWrapOriginal = wrapper.querySelector('.coco-qty-wrap');
                         if (qtyWrapOriginal) {
                             const qtyWrapClone = qtyWrapOriginal.cloneNode(true);
                             qtyWrapOriginal.parentNode.replaceChild(qtyWrapClone, qtyWrapOriginal);
                         }
 
-                        // 5. Reactivamos la lógica usando `absoluteMaxStock` de la BD
                         const qtyInput = wrapper.querySelector('.coco-qty');
                         const btnMinus = wrapper.querySelectorAll('.coco-qty-btn')[0];
                         const btnPlus = wrapper.querySelectorAll('.coco-qty-btn')[1];
@@ -117,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             btnPlus.addEventListener('click', () => {
                                 let current = parseInt(qtyInput.value) || 1;
                                 
-                                // CONDICIONANTE INQUEBRANTABLE DEL STOCK
                                 if (current < absoluteMaxStock) {
                                     updateCartState(current + 1);
                                 } else {
@@ -146,9 +150,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    closeModal.addEventListener('click', () => {
-        modal.classList.add('tc-modal-hidden');
-        wrapper.innerHTML = ''; 
+    // 1. Evento para cerrar mediante el botón de la "X"
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeAndCleanModal);
+    }
+
+    // 2. Evento para cerrar al hacer clic afuera del modal (en el overlay oscuro)
+    window.addEventListener('click', (e) => {
+        // Verificamos si el elemento clickeado es exactamente el fondo del modal
+        if (e.target === modal) {
+            closeAndCleanModal();
+        }
     });
 });
 

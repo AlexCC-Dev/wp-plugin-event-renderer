@@ -24,7 +24,8 @@ function tc_edr_enqueue_assets() {
 }
 
 add_shortcode( 'tc_date_selector', array( 'TC_Modal_UI_Builder', 'render_date_grid' ) );
-
+add_shortcode( 'tc_cartelera_unica', array( 'TC_Modal_UI_Builder', 'render_master_billboard' ) );
+add_shortcode( 'tc_upcoming_sidebar', array( 'TC_Modal_UI_Builder', 'render_upcoming_sidebar' ) );
 // =========================================================================
 // NUEVO ENDPOINT AJAX: Consulta el stock exacto del ID del Producto
 // =========================================================================

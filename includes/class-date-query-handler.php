@@ -11,11 +11,15 @@ class TC_Date_Query_Handler {
         if ( ! $current_event_id ) return array();
 
         $fechas_eventos = array();
+        
+        // 1. Obtenemos el nombre del evento actual
         $event_title = get_the_title( $current_event_id );
         
+        // 2. Limpieza de sufijos para agrupar todos los shows hermanos
         $clean_title = trim( str_replace( '[duplicate]', '', $event_title ) );
         self::$search_title = $clean_title;
 
+        // 3. Inyectamos filtro SQL para buscar por coincidencia de nombre
         add_filter( 'posts_where', array( __CLASS__, 'filter_by_title' ), 10, 2 );
 
         $args = array(
@@ -24,11 +28,14 @@ class TC_Date_Query_Handler {
             'posts_per_page' => -1,
             'meta_key'       => 'event_date_time',
             'orderby'        => 'meta_value',
-            'order'          => 'ASC',
+            'order'          => 'ASC', // Mantiene el orden cronológico estricto
+            
+            // RESTAURAMOS LA CONDICIÓN: Excluye los días pasados, 
+            // pero incluye todo lo programado desde hoy a las 00:00 hacia adelante.
             'meta_query'     => array(
                 array(
                     'key'     => 'event_date_time',
-                    'value'   => current_time( 'Y-m-d H:i:s' ),
+                    'value'   => wp_date( 'Y-m-d 00:00:00' ), 
                     'compare' => '>=',
                     'type'    => 'DATETIME'
                 )
@@ -36,6 +43,8 @@ class TC_Date_Query_Handler {
         );
 
         $query = new WP_Query( $args );
+        
+        // Retiramos filtro para no ensuciar otras consultas de WordPress
         remove_filter( 'posts_where', array( __CLASS__, 'filter_by_title' ), 10 );
 
         if ( $query->have_posts() ) {
@@ -43,6 +52,7 @@ class TC_Date_Query_Handler {
                 $query->the_post();
                 $post_id = get_the_ID();
                 
+                // Mantenemos tu regla inquebrantable: si no hay stock, no hay botón.
                 $stock_disponible = self::get_exact_stock( $post_id );
                 
                 if ( $stock_disponible <= 0 ) {
@@ -114,5 +124,140 @@ class TC_Date_Query_Handler {
             $where .= $wpdb->prepare( " AND {$wpdb->posts}.post_title LIKE %s", self::$search_title . '%' );
         }
         return $where;
+    }
+
+    // =======================================================
+    // 2. CARTELERA PRINCIPAL (Solo futuros, agrupa por nombre y prioriza el último creado)
+    // =======================================================
+    public static function get_unique_upcoming_events() {
+        $eventos_unicos = array();
+        $titulos_procesados = array();
+
+        $args = array(
+            'post_type'      => 'tc_events',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'meta_key'       => 'event_date_time',
+            // CAMBIO CLAVE: Ordenamos por la fecha en la que se CREÓ el evento en WordPress (el más nuevo primero)
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'meta_query'     => array(
+                array(
+                    'key'     => 'event_date_time',
+                    'value'   => current_time( 'Y-m-d H:i:s' ),
+                    'compare' => '>=',
+                    'type'    => 'DATETIME'
+                )
+            )
+        );
+
+        $query = new WP_Query( $args );
+
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $post_id = get_the_ID();
+                
+                $raw_title = get_the_title( $post_id );
+                
+                // 1. Cortar en guiones, corchetes o paréntesis (Ej: "Titulo - Copia" -> "Titulo ")
+                $title_parts = preg_split('/[-–\[\(]/', $raw_title);
+                $base_title = trim( $title_parts[0] );
+                
+                // 2. NUEVA MAGIA REGEX: Eliminar números secuenciales sueltos al final del string
+                // Esto convierte "Título Ejemplo 3" en "Título Ejemplo"
+                $base_title = preg_replace('/\s+\d+$/', '', $base_title);
+                $base_title = trim( $base_title );
+
+                // 3. Normalizamos a minúsculas para que la validación sea a prueba de balas
+                $compare_title = mb_strtolower( $base_title );
+
+                // Si ya guardamos el evento más reciente con este nombre, ignoramos los viejos
+                if ( in_array( $compare_title, $titulos_procesados ) ) {
+                    continue; 
+                }
+                
+                if ( self::get_exact_stock( $post_id ) <= 0 ) {
+                    continue; 
+                }
+
+                $img_url = get_the_post_thumbnail_url( $post_id, 'large' );
+
+                if ( $img_url ) {
+                    $eventos_unicos[] = array(
+                        'id'               => $post_id,
+                        'titulo_base'      => $base_title, // Guardamos el nombre limpio sin el número
+                        'imagen'           => $img_url,
+                        'permalink'        => get_permalink( $post_id )
+                    );
+                    
+                    // Registramos que ya encontramos al "representante" de este show
+                    $titulos_procesados[] = $compare_title; 
+                }
+            }
+            wp_reset_postdata();
+        }
+        return $eventos_unicos;
+    }
+
+    // NUEVO 2: Lista Sidebar desglosada
+    // NUEVO 2: Lista Sidebar desglosada (Ahora con hora de finalización)
+    public static function get_all_upcoming_events( $limit = 10 ) {
+        $eventos_sidebar = array();
+        $args = array(
+            'post_type'      => 'tc_events',
+            'post_status'    => 'publish',
+            'posts_per_page' => $limit,
+            'meta_key'       => 'event_date_time',
+            'orderby'        => 'meta_value',
+            'order'          => 'ASC',
+            'meta_query'     => array(
+                array(
+                    'key'     => 'event_date_time',
+                    'value'   => current_time( 'Y-m-d H:i:s' ),
+                    'compare' => '>=',
+                    'type'    => 'DATETIME'
+                )
+            )
+        );
+
+        $query = new WP_Query( $args );
+
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $post_id = get_the_ID();
+                
+                if ( self::get_exact_stock( $post_id ) <= 0 ) continue;
+
+                $raw_date = get_post_meta( $post_id, 'event_date_time', true );
+                // Obtenemos la fecha/hora de finalización nativa de Tickera
+                $raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true ); 
+                
+                if ( ! empty( $raw_date ) ) {
+                    $timestamp = strtotime( $raw_date );
+                    
+                    // Formateamos la hora de inicio
+                    $hora_completa = wp_date( 'g:i a', $timestamp );
+                    
+                    // Si el evento tiene una hora de finalización configurada, la concatenamos
+                    if ( ! empty( $raw_end_date ) ) {
+                        $end_timestamp = strtotime( $raw_end_date );
+                        $hora_completa .= ' - ' . wp_date( 'g:i a', $end_timestamp );
+                    }
+
+                    $eventos_sidebar[] = array(
+                        'id'        => $post_id,
+                        'titulo'    => get_the_title( $post_id ),
+                        'mes'       => wp_date( 'M', $timestamp ),
+                        'dia'       => wp_date( 'j', $timestamp ),
+                        'hora'      => $hora_completa, // Enviamos el string ya procesado a la vista
+                        'permalink' => get_permalink( $post_id )
+                    );
+                }
+            }
+            wp_reset_postdata();
+        }
+        return $eventos_sidebar;
     }
 }
