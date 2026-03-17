@@ -70,7 +70,7 @@ class TC_Modal_UI_Builder {
         return ob_get_clean();
     }
 
-    // NUEVO 2: Lista Lateral de Eventos
+    // NUEVO 2: Lista Lateral de Eventos (Totalmente Aislada)
     public static function render_upcoming_sidebar() {
         $eventos = TC_Date_Query_Handler::get_all_upcoming_events( 10 );
 
@@ -83,7 +83,14 @@ class TC_Modal_UI_Builder {
             <ul class="tc-upcoming-list">
                 <?php foreach ( $eventos as $evento ) : ?>
                     <li>
-                        <a href="<?php echo esc_url( $evento['permalink'] ); ?>" class="tc-upcoming-item-link">
+                        <button class="tc-upcoming-item-link tc-sidebar-trigger-btn" 
+                                style="background: transparent; border: none; padding: 0; width: 100%; text-align: left; font-family: inherit; cursor: pointer;"
+                                data-url="<?php echo esc_url( $evento['permalink'] ); ?>"
+                                data-img="<?php echo esc_url( $evento['imagen'] ); ?>"
+                                data-title="<?php echo esc_attr( $evento['titulo'] ); ?>"
+                                data-date="<?php echo esc_attr( $evento['fecha_formateada'] ); ?>"
+                                data-stock="<?php echo esc_attr( $evento['stock'] ); ?>">
+                                
                             <div class="tc-upcoming-date">
                                 <span class="tc-month"><?php echo esc_html( strtoupper( $evento['mes'] ) ); ?></span>
                                 <span class="tc-day"><?php echo esc_html( $evento['dia'] ); ?></span>
@@ -92,10 +99,30 @@ class TC_Modal_UI_Builder {
                                 <span class="tc-time"><?php echo esc_html( $evento['hora'] ); ?></span>
                                 <span class="tc-title"><?php echo esc_html( $evento['titulo'] ); ?></span>
                             </div>
-                        </a>
+                        </button>
                     </li>
                 <?php endforeach; ?>
             </ul>
+        </div>
+
+        <div id="tc-sidebar-checkout-modal" class="tc-modal-hidden">
+            <div class="tc-modal-content">
+                <span class="tc-sidebar-modal-close tc-modal-close">&times;</span>
+                <div class="buy-modal-container">
+                    <div class="tc-modal-left-column">
+                        <div class="img-product-container">
+                            <figure class="wp-block-image size-full"></figure>
+                        </div>
+                        <div class="tc-modal-event-info">
+                            <h3 class="tc-sidebar-modal-title tc-modal-title"></h3>
+                            <p class="tc-sidebar-modal-date tc-modal-date"></p>
+                        </div>
+                    </div>
+                    <div id="tc-sidebar-tickera-component-wrapper" class="tc-modal-right-column">
+                        <div class="coco-qty-wrap"></div>
+                    </div>
+                </div>
+            </div>
         </div>
         <?php
         return ob_get_clean();

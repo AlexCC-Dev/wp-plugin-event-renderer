@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: TC Event Date Renderer & Modal
+ * Plugin Name: Event Date Bridge for Tickera & WooCommerce
  * Description: Interfaz asíncrona para renderizar fechas de Tickera y cargar el checkout en un modal.
- * Version: 1.0.0
- * Author: Tu Nombre
+ * Version: 1.6.2
+ * Author: Jesus Carrillo
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Seguridad

@@ -28,14 +28,13 @@ class TC_Date_Query_Handler {
             'posts_per_page' => -1,
             'meta_key'       => 'event_date_time',
             'orderby'        => 'meta_value',
-            'order'          => 'ASC', // Mantiene el orden cronológico estricto
+            'order'          => 'ASC', 
             
-            // RESTAURAMOS LA CONDICIÓN: Excluye los días pasados, 
-            // pero incluye todo lo programado desde hoy a las 00:00 hacia adelante.
+            // Filtramos estrictamente desde este preciso minuto hacia el futuro.
             'meta_query'     => array(
                 array(
                     'key'     => 'event_date_time',
-                    'value'   => wp_date( 'Y-m-d 00:00:00' ), 
+                    'value'   => current_time( 'Y-m-d H:i:s' ),
                     'compare' => '>=',
                     'type'    => 'DATETIME'
                 )
@@ -52,7 +51,7 @@ class TC_Date_Query_Handler {
                 $query->the_post();
                 $post_id = get_the_ID();
                 
-                // Mantenemos tu regla inquebrantable: si no hay stock, no hay botón.
+                // Mantenemos la regla de stock
                 $stock_disponible = self::get_exact_stock( $post_id );
                 
                 if ( $stock_disponible <= 0 ) {
@@ -60,14 +59,27 @@ class TC_Date_Query_Handler {
                 }
 
                 $raw_date = get_post_meta( $post_id, 'event_date_time', true );
+                // Extraemos también la hora de finalización
+                $raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true );
+                
                 $img_url = get_the_post_thumbnail_url( $post_id, 'large' );
                 
                 if ( ! empty( $raw_date ) ) {
                     $timestamp = strtotime( $raw_date );
+                    
+                    // Construimos la fecha base con la hora de inicio
+                    $fecha_completa = wp_date( 'F j, Y - g:i a', $timestamp );
+                    
+                    // Si el evento tiene configurada una hora de cierre, la agregamos
+                    if ( ! empty( $raw_end_date ) ) {
+                        $end_timestamp = strtotime( $raw_end_date );
+                        $fecha_completa .= ' – ' . wp_date( 'g:i a', $end_timestamp );
+                    }
+
                     $fechas_eventos[] = array(
                         'id'               => $post_id,
                         'titulo'           => get_the_title( $post_id ),
-                        'fecha_formateada' => wp_date( 'F j, Y - g:i a', $timestamp ),
+                        'fecha_formateada' => $fecha_completa, // Mandamos la cadena completa
                         'imagen'           => $img_url ? $img_url : '',
                         'stock'            => $stock_disponible
                     );
@@ -138,7 +150,6 @@ class TC_Date_Query_Handler {
             'post_status'    => 'publish',
             'posts_per_page' => -1,
             'meta_key'       => 'event_date_time',
-            // CAMBIO CLAVE: Ordenamos por la fecha en la que se CREÓ el evento en WordPress (el más nuevo primero)
             'orderby'        => 'date',
             'order'          => 'DESC',
             'meta_query'     => array(
@@ -200,8 +211,7 @@ class TC_Date_Query_Handler {
         return $eventos_unicos;
     }
 
-    // NUEVO 2: Lista Sidebar desglosada
-    // NUEVO 2: Lista Sidebar desglosada (Ahora con hora de finalización)
+    // NUEVO 2: Lista Sidebar desglosada (Aislada para alimentar su propio modal)
     public static function get_all_upcoming_events( $limit = 10 ) {
         $eventos_sidebar = array();
         $args = array(
@@ -228,31 +238,35 @@ class TC_Date_Query_Handler {
                 $query->the_post();
                 $post_id = get_the_ID();
                 
-                if ( self::get_exact_stock( $post_id ) <= 0 ) continue;
+                $stock_disponible = self::get_exact_stock( $post_id );
+                if ( $stock_disponible <= 0 ) continue;
 
                 $raw_date = get_post_meta( $post_id, 'event_date_time', true );
-                // Obtenemos la fecha/hora de finalización nativa de Tickera
                 $raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true ); 
+                $img_url = get_the_post_thumbnail_url( $post_id, 'large' ); // Extraemos la imagen
                 
                 if ( ! empty( $raw_date ) ) {
                     $timestamp = strtotime( $raw_date );
                     
-                    // Formateamos la hora de inicio
                     $hora_completa = wp_date( 'g:i a', $timestamp );
+                    $fecha_formateada = wp_date( 'F j, Y - g:i a', $timestamp ); // Fecha para el modal
                     
-                    // Si el evento tiene una hora de finalización configurada, la concatenamos
                     if ( ! empty( $raw_end_date ) ) {
                         $end_timestamp = strtotime( $raw_end_date );
                         $hora_completa .= ' - ' . wp_date( 'g:i a', $end_timestamp );
+                        $fecha_formateada .= ' – ' . wp_date( 'g:i a', $end_timestamp );
                     }
 
                     $eventos_sidebar[] = array(
-                        'id'        => $post_id,
-                        'titulo'    => get_the_title( $post_id ),
-                        'mes'       => wp_date( 'M', $timestamp ),
-                        'dia'       => wp_date( 'j', $timestamp ),
-                        'hora'      => $hora_completa, // Enviamos el string ya procesado a la vista
-                        'permalink' => get_permalink( $post_id )
+                        'id'               => $post_id,
+                        'titulo'           => get_the_title( $post_id ),
+                        'mes'              => wp_date( 'M', $timestamp ),
+                        'dia'              => wp_date( 'j', $timestamp ),
+                        'hora'             => $hora_completa,
+                        'fecha_formateada' => $fecha_formateada,
+                        'imagen'           => $img_url ? $img_url : '', // Enviamos imagen
+                        'stock'            => $stock_disponible,        // Enviamos stock
+                        'permalink'        => get_permalink( $post_id )
                     );
                 }
             }
