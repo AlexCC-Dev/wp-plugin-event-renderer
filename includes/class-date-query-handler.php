@@ -60,8 +60,8 @@ class TC_Date_Query_Handler {
 
                 $raw_date = get_post_meta( $post_id, 'event_date_time', true );
                 // Extraemos también la hora de finalización
-                $raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true );
-                
+                /*$raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true );
+                */
                 $img_url = get_the_post_thumbnail_url( $post_id, 'large' );
                 
                 if ( ! empty( $raw_date ) ) {
@@ -71,10 +71,10 @@ class TC_Date_Query_Handler {
                     $fecha_completa = wp_date( 'F j, Y - g:i a', $timestamp );
                     
                     // Si el evento tiene configurada una hora de cierre, la agregamos
-                    if ( ! empty( $raw_end_date ) ) {
+                    /*if ( ! empty( $raw_end_date ) ) {
                         $end_timestamp = strtotime( $raw_end_date );
                         $fecha_completa .= ' – ' . wp_date( 'g:i a', $end_timestamp );
-                    }
+                    }*/
 
                     $fechas_eventos[] = array(
                         'id'               => $post_id,
@@ -242,7 +242,7 @@ class TC_Date_Query_Handler {
                 if ( $stock_disponible <= 0 ) continue;
 
                 $raw_date = get_post_meta( $post_id, 'event_date_time', true );
-                $raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true ); 
+                /*$raw_end_date = get_post_meta( $post_id, 'event_end_date_time', true );*/ 
                 $img_url = get_the_post_thumbnail_url( $post_id, 'large' ); // Extraemos la imagen
                 
                 if ( ! empty( $raw_date ) ) {
@@ -251,11 +251,11 @@ class TC_Date_Query_Handler {
                     $hora_completa = wp_date( 'g:i a', $timestamp );
                     $fecha_formateada = wp_date( 'F j, Y - g:i a', $timestamp ); // Fecha para el modal
                     
-                    if ( ! empty( $raw_end_date ) ) {
+                    /*if ( ! empty( $raw_end_date ) ) {
                         $end_timestamp = strtotime( $raw_end_date );
                         $hora_completa .= ' - ' . wp_date( 'g:i a', $end_timestamp );
                         $fecha_formateada .= ' – ' . wp_date( 'g:i a', $end_timestamp );
-                    }
+                    }*/
 
                     $eventos_sidebar[] = array(
                         'id'               => $post_id,
