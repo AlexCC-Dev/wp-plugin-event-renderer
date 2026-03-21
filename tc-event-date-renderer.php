@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Event Date Bridge for Tickera & WooCommerce
  * Description: Interfaz asíncrona para renderizar fechas de Tickera y cargar el checkout en un modal.
- * Version: 1.0.1
- * Author: Pospago
+ * Version: 1.6.2
+ * Author: PosPago
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Seguridad
@@ -54,3 +54,4 @@ function tc_get_exact_product_stock_callback() {
     
     wp_send_json_error( 'Producto no encontrado' );
     wp_die();
+}
