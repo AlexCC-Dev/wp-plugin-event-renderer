@@ -7,8 +7,8 @@ class TC_Date_Query_Handler {
 
     private static $search_title = '';
 
-    // =======================================================
-    // 1. SELECTOR DE FECHAS (No afectado: Solo muestra inicio. Listo para UTC)
+   // =======================================================
+    // 1. SELECTOR DE FECHAS (MODIFICADO: Coincidencia 100% estricta)
     // =======================================================
     public static function get_tickera_dates( $current_event_id ) {
         if ( ! $current_event_id ) return array();
@@ -28,7 +28,7 @@ class TC_Date_Query_Handler {
             'meta_key'         => 'event_date_time',
             'orderby'          => 'meta_value',
             'order'            => 'ASC',
-            'suppress_filters' => true, // Blindaje contra interferencias de 3ros
+            'suppress_filters' => true,
             'meta_query'       => array(
                 array(
                     'key'     => 'event_date_time',
@@ -47,6 +47,19 @@ class TC_Date_Query_Handler {
                 $query->the_post();
                 $post_id = get_the_ID();
                 
+                // ---------------------------------------------------------
+                // NUEVO FILTRO ESTRICTO AL 100%
+                // ---------------------------------------------------------
+                $loop_title = get_the_title( $post_id );
+                $loop_clean = trim( str_replace( '[duplicate]', '', $loop_title ) );
+                
+                // strcasecmp compara textos ignorando mayúsculas/minúsculas. 
+                // Si el resultado no es 0, significa que NO son exactamente iguales.
+                if ( strcasecmp( $clean_title, $loop_clean ) !== 0 ) {
+                    continue; // Lo descartamos inmediatamente
+                }
+                // ---------------------------------------------------------
+
                 $stock_disponible = self::get_exact_stock( $post_id );
                 if ( $stock_disponible <= 0 ) continue;
 
@@ -56,12 +69,12 @@ class TC_Date_Query_Handler {
                 if ( ! empty( $raw_date ) ) {
                     $timestamp = strtotime( $raw_date );
                     
-                    // REQUISITO UTC: Usamos wp_date()
+                    // Solo renderizamos la fecha y hora de inicio
                     $fecha_completa = wp_date( 'F j, Y - g:i a', $timestamp );
 
                     $fechas_eventos[] = array(
                         'id'               => $post_id,
-                        'titulo'           => get_the_title( $post_id ),
+                        'titulo'           => $loop_title,
                         'fecha_formateada' => $fecha_completa,
                         'imagen'           => $img_url ? $img_url : '',
                         'stock'            => $stock_disponible
