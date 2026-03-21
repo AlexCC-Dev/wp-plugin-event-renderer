@@ -18,8 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showSoldOutState = (container) => {
         container.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 250px; padding: 20px;">
-                <h2 style="font-size: 3.5rem; font-weight: 900; color: #e63946; margin: 0; line-height: 1; text-transform: uppercase; letter-spacing: 2px; text-align: center;">SOLD OUT</h2>
-                <p style="color: #999; font-size: 1.1rem; margin-top: 15px; text-align: center;">Los boletos para este evento se han agotado.</p>
+                <h2 style="font-size: 3.5rem; font-weight: 900; color: #ffffff; margin: 0; line-height: 1; text-transform: uppercase; letter-spacing: 2px; text-align: center;">SOLD OUT</h2>
             </div>
         `;
     };
