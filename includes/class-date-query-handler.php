@@ -7,8 +7,8 @@ class TC_Date_Query_Handler {
 
     private static $search_title = '';
 
-   // =======================================================
-    // 1. SELECTOR DE FECHAS (MODIFICADO: Coincidencia 100% estricta)
+    // =======================================================
+    // 1. SELECTOR DE FECHAS (Coincidencia 100% Estricta + Zona Horaria CDMX)
     // =======================================================
     public static function get_tickera_dates( $current_event_id ) {
         if ( ! $current_event_id ) return array();
@@ -21,6 +21,11 @@ class TC_Date_Query_Handler {
 
         add_filter( 'posts_where', array( __CLASS__, 'filter_by_title' ), 10, 2 );
 
+        // 1. Forzamos la zona horaria de Ciudad de México
+        $tz = new DateTimeZone( 'America/Mexico_City' );
+        $now = new DateTime( 'now', $tz );
+        $current_time_str = $now->format( 'Y-m-d H:i:s' );
+
         $args = array(
             'post_type'        => 'tc_events',
             'post_status'      => 'publish',
@@ -32,7 +37,7 @@ class TC_Date_Query_Handler {
             'meta_query'       => array(
                 array(
                     'key'     => 'event_date_time',
-                    'value'   => current_time( 'Y-m-d H:i:s' ),
+                    'value'   => $current_time_str, // Comparamos contra la hora exacta en CDMX
                     'compare' => '>=',
                     'type'    => 'DATETIME'
                 )
@@ -47,30 +52,26 @@ class TC_Date_Query_Handler {
                 $query->the_post();
                 $post_id = get_the_ID();
                 
-                // ---------------------------------------------------------
-                // NUEVO FILTRO ESTRICTO AL 100%
-                // ---------------------------------------------------------
+                // Filtro Estricto al 100%
                 $loop_title = get_the_title( $post_id );
                 $loop_clean = trim( str_replace( '[duplicate]', '', $loop_title ) );
-                
-                // strcasecmp compara textos ignorando mayúsculas/minúsculas. 
-                // Si el resultado no es 0, significa que NO son exactamente iguales.
                 if ( strcasecmp( $clean_title, $loop_clean ) !== 0 ) {
-                    continue; // Lo descartamos inmediatamente
+                    continue; 
                 }
-                // ---------------------------------------------------------
 
                 $stock_disponible = self::get_exact_stock( $post_id );
                 if ( $stock_disponible <= 0 ) continue;
 
-                $raw_date    = get_post_meta( $post_id, 'event_date_time', true );
-                $img_url     = get_the_post_thumbnail_url( $post_id, 'large' );
+                $raw_date = get_post_meta( $post_id, 'event_date_time', true );
+                $img_url  = get_the_post_thumbnail_url( $post_id, 'large' );
                 
                 if ( ! empty( $raw_date ) ) {
-                    $timestamp = strtotime( $raw_date );
+                    // Tratamos la fecha leída como si estuviera en CDMX
+                    $date_obj = new DateTime( $raw_date, $tz );
+                    $timestamp = $date_obj->getTimestamp();
                     
-                    // Solo renderizamos la fecha y hora de inicio
-                    $fecha_completa = wp_date( 'F j, Y - g:i a', $timestamp );
+                    // Formateamos usando wp_date() con la zona horaria forzada
+                    $fecha_completa = wp_date( 'F j, Y - g:i a', $timestamp, $tz );
 
                     $fechas_eventos[] = array(
                         'id'               => $post_id,
@@ -132,11 +133,15 @@ class TC_Date_Query_Handler {
     }
 
     // =======================================================
-    // 2. CARTELERA PRINCIPAL
+    // 2. CARTELERA PRINCIPAL (Zona Horaria CDMX)
     // =======================================================
     public static function get_unique_upcoming_events() {
         $eventos_unicos     = array();
         $titulos_procesados = array();
+
+        $tz = new DateTimeZone( 'America/Mexico_City' );
+        $now = new DateTime( 'now', $tz );
+        $current_time_str = $now->format( 'Y-m-d H:i:s' );
 
         $args = array(
             'post_type'        => 'tc_events',
@@ -149,7 +154,7 @@ class TC_Date_Query_Handler {
             'meta_query'       => array(
                 array(
                     'key'     => 'event_date_time',
-                    'value'   => current_time( 'Y-m-d H:i:s' ),
+                    'value'   => $current_time_str,
                     'compare' => '>=',
                     'type'    => 'DATETIME'
                 )
@@ -191,10 +196,15 @@ class TC_Date_Query_Handler {
     }
 
     // =======================================================
-    // 3. SIDEBAR (MODIFICADO: Con validación de Finalización y UTC)
+    // 3. SIDEBAR (Zona Horaria CDMX estricta en Inicio y Fin)
     // =======================================================
     public static function get_all_upcoming_events( $limit = 10 ) {
         $eventos_sidebar = array();
+        
+        $tz = new DateTimeZone( 'America/Mexico_City' );
+        $now = new DateTime( 'now', $tz );
+        $current_time_str = $now->format( 'Y-m-d H:i:s' );
+
         $args = array(
             'post_type'        => 'tc_events',
             'post_status'      => 'publish',
@@ -206,7 +216,7 @@ class TC_Date_Query_Handler {
             'meta_query'       => array(
                 array(
                     'key'     => 'event_date_time',
-                    'value'   => current_time( 'Y-m-d H:i:s' ),
+                    'value'   => $current_time_str,
                     'compare' => '>=',
                     'type'    => 'DATETIME'
                 )
@@ -228,35 +238,35 @@ class TC_Date_Query_Handler {
                 $img_url      = get_the_post_thumbnail_url( $post_id, 'large' );
                 
                 if ( ! empty( $raw_date ) ) {
-                    $timestamp = strtotime( $raw_date );
+                    // Instanciamos el objeto de fecha usando la zona horaria estricta
+                    $date_obj = new DateTime( $raw_date, $tz );
+                    $timestamp = $date_obj->getTimestamp();
                     
-                    // REQUISITO UTC: Todo procesado mediante wp_date()
-                    $hora_completa    = wp_date( 'g:i a', $timestamp );
-                    $fecha_formateada = wp_date( 'F j, Y - g:i a', $timestamp );
+                    // Formateamos pasando el objeto $tz
+                    $hora_completa    = wp_date( 'g:i a', $timestamp, $tz );
+                    $fecha_formateada = wp_date( 'F j, Y - g:i a', $timestamp, $tz );
                     
-                    // REQUISITO 1: Validación inteligente de la Fecha de Finalización
                     if ( ! empty( $raw_end_date ) ) {
-                        $end_timestamp  = strtotime( $raw_end_date );
+                        $end_date_obj = new DateTime( $raw_end_date, $tz );
+                        $end_timestamp = $end_date_obj->getTimestamp();
                         
-                        $start_day = wp_date( 'Y-m-d', $timestamp );
-                        $end_day   = wp_date( 'Y-m-d', $end_timestamp );
+                        $start_day = wp_date( 'Y-m-d', $timestamp, $tz );
+                        $end_day   = wp_date( 'Y-m-d', $end_timestamp, $tz );
                         
                         if ( $start_day === $end_day ) {
-                            // Terminan el mismo día: Solo agregamos la hora final
-                            $hora_completa    .= ' - ' . wp_date( 'g:i a', $end_timestamp );
-                            $fecha_formateada .= ' – ' . wp_date( 'g:i a', $end_timestamp );
+                            $hora_completa    .= ' - ' . wp_date( 'g:i a', $end_timestamp, $tz );
+                            $fecha_formateada .= ' – ' . wp_date( 'g:i a', $end_timestamp, $tz );
                         } else {
-                            // Terminan en días distintos: Agregamos Fecha y Hora de finalización
-                            $hora_completa    .= ' - ' . wp_date( 'M j, g:i a', $end_timestamp );
-                            $fecha_formateada .= ' – ' . wp_date( 'F j, Y - g:i a', $end_timestamp );
+                            $hora_completa    .= ' - ' . wp_date( 'M j, g:i a', $end_timestamp, $tz );
+                            $fecha_formateada .= ' – ' . wp_date( 'F j, Y - g:i a', $end_timestamp, $tz );
                         }
                     }
 
                     $eventos_sidebar[] = array(
                         'id'               => $post_id,
                         'titulo'           => get_the_title( $post_id ),
-                        'mes'              => wp_date( 'M', $timestamp ), // UTC Seguro
-                        'dia'              => wp_date( 'j', $timestamp ), // UTC Seguro
+                        'mes'              => wp_date( 'M', $timestamp, $tz ),
+                        'dia'              => wp_date( 'j', $timestamp, $tz ),
                         'hora'             => $hora_completa,
                         'fecha_formateada' => $fecha_formateada,
                         'imagen'           => $img_url ? $img_url : '',
